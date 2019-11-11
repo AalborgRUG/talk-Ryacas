@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Ryacas</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mikkel Meyer Andersen and Søren Højsgaard" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# <code>Ryacas</code>
+## A computer algebra system in R
+### Mikkel Meyer Andersen and Søren Højsgaard
+### Nov 11, 2019<br /><br /><a href="https://AalborgRUG.github.io/talk-Ryacas" class="uri">https://AalborgRUG.github.io/talk-Ryacas</a>
+
+---
+
+exclude: true
+
+
+
+
+---
+exclude: true
+
+
+
+---
+class: inverse
+name: the-toc
+
+
+# Content
+- Genesis of `Ryacas`
+  + Original motivation
+- Getting started
+- Example: Multinomial likelihood
+- Example: Graphical models
+  + Autoregression, AR(1)
+  + State space models
+- Further down the road
+  + Further down the road
+  + Original motivation - revisited
+- References
+
+
+
+---
+# Genesis of `Ryacas`
+
+[[Rd] Computer algebra in R - would that be an idea??](https://tolstoy.newcastle.edu.au/R/devel/05/07/1599.html)
+
+From: Søren Højsgaard &lt;Soren.Hojsgaard_at_agrsci.dk&gt;
+Date: Tue 12 Jul 2005 - 11:19:48 GMT
+
+&gt;From time to time people request symbolic computations beyond what D() and deriv() etc can provide. A brief look at the internet shows that there are many more or less developed computer algebra packages freely available. Therefore, I wondered if it would be an idea to try to 'integrate' one of these packages in R, which I guess can be done in more or less elegant ways... I do not know any of the computer algebra people around the World, but perhaps some other people from the R-community do and would be able to/interested in establishing such a connection...
+Just and idea; comments appreciated :-)
+
+---
+
+## Original motivation
+
+Modelling growth of slaugther pigs under different feed treatments.
+
+One option is random regression model for `\(i\)`'th individual:
+`$$y_{i,t} = b_0 + b_1 t + B_0 + B_1 t + e_{i,t},$$`
+where `\(B_0\)`, `\(B_1\)`, `\(e_{i,t}\)` are normal random effects (and `\(b_0, b_1\)` are specific to treatment).
+
+
+![](ryacas-pres_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+
+### Motivation
+
+Random regression model:
+
+`$$y_{i,t} = B_0 + B_1 t + e_{i,t}$$`
+where `\(B_0\)`, `\(B_1\)`, `\(e_{i,t}\)` are normal random effects.
+
+Question: What happens to the correlation between measurements on the
+same unit, `\(i\)`, as the distance between measurements increase. That
+is, what it the limit of
+
+`$$cor(y_{i,t}, y_{i,t+k}) \rightarrow \text{??} \quad \mbox{ as } \quad k \rightarrow \infty$$`
+
+
+
+---
+
+### Background
+
+* First version: `yacasR`; only on Windows; communication between R and yacas based client/server technology on local machine.
+
+* Changed name to `Ryacas`; more contributors:
+  + Rob Goedman
+  + Gabor Grothendieck
+  + **Søren Højsgaard**
+  + Ayal Pinkus
+  + Grzegorz Mazur
+
+* Appeared on CRAN around 2009.
+
+---
+
+### Background
+
+* Has lived a quiet life until recently (2017) when **Mikkel Meyer Andersen** became maintainer
+  + `XML` replaced by `xml2`, then skip XML communication with `yacas`'s `RForm()`
+
+* JOSS paper Andersen and Højsgaard (2019) [Ryacas: A computer algebra system in R](https://joss.theoj.org/papers/10.21105/joss.01763)
+
+* Synergy in open source projects
+  + Bugs in `yacas` (`Solve()`, `()`)
+  + New features in `yacas` (`SumFunc()`, `Solve()`, `RForm()`, `Variables()`)
+
+* Other ressources: [Wolfram Alpha](https://www.wolframalpha.com/)
+
+---
+
+class: center, middle, inverse
+
+# Getting started
+
+---
+
+### Getting started
+
+
+```r
+library(Ryacas)
+```
+
+* Stable version: &lt;https://CRAN.R-project.org/package=Ryacas&gt;
+* Development version: &lt;https://github.com/mikldk/ryacas/&gt;
+* Online documentation: &lt;http://mikldk.github.io/ryacas/&gt;
+
+This talk was made using the development version available at &lt;https://github.com/mikldk/ryacas/&gt;:
+
+
+```r
+devtools::install_github("mikldk/ryacas")
+```
+
+
+```r
+packageVersion("Ryacas")
+```
+
+```
+## [1] '1.1.1.9005'
+```
+
+
+
+---
+
+### `yacas` symbols
+
+
+```r
+*x &lt;- ysym("x")
+y &lt;- ysym("y")
+eq &lt;- x^2 + 3*x + 4*y + y^4
+eq
+```
+
+```
+## y: x^2+3*x+4*y+y^4
+```
+
+---
+
+### ...is just a class with a `yacas` command (for now)
+
+
+```r
+str(eq)
+```
+
+```
+## List of 3
+##  $ yacas_cmd: chr "x^2+3*x+4*y+y^4"
+##  $ is_mat   : logi FALSE
+##  $ is_vec   : logi FALSE
+```
+
+```r
+class(eq)
+```
+
+```
+## [1] "yac_symbol" "list"
+```
+
+```r
+as_r(eq)
+```
+
+```
+## expression(x^2 + 3 * x + 4 * y + y^4)
+```
+
+```r
+as.character(eq)
+```
+
+```
+## [1] "x^2+3*x+4*y+y^4"
+```
+
+---
+
+### Generic functions
+
+
+```r
+methods(class = "yac_symbol")
+```
+
+```
+##  [1] [            [[           [&lt;-          %*%          as_r        
+##  [6] as_y         as.character c            cbind        deriv       
+## [11] diag         diag&lt;-       dim          Hessian      integrate   
+## [16] Jacobian     length       lim          lower.tri    Math        
+## [21] Ops          print        prod         rbind        simplify    
+## [26] solve        str          sum          t            tex         
+## [31] upper.tri    with_value   y_fn         y_rmvars     yac_assign  
+## [36] yac_expr     yac_silent   yac_str      yac         
+## see '?methods' for accessing help and source code
+```
+
+---
+
+### Derivatives
+
+
+```r
+deriv(eq, "x") # eq = x^2+3*x+4*y+y^4
+```
+
+```
+## y: 2*x+3
+```
+
+```r
+H &lt;- Hessian(eq, c("x", "y"))
+H 
+```
+
+```
+## {{     2,      0},
+##  {     0, 12*y^2}}
+```
+
+```r
+eval(as_r(H), list(x = 1, y = 1))
+```
+
+```
+##      [,1] [,2]
+## [1,]    2    0
+## [2,]    0   12
+```
+
+```r
+tex(H)
+```
+
+```
+## [1] "\\left( \\begin{array}{cc} 2 &amp; 0 \\\\ 0 &amp; 12 y ^{2} \\end{array} \\right) "
+```
+
+---
+
+### Solving equations
+
+Syntax:
+```
+solve(lhs, rhs, vars)
+```
+
+A brief example:
+
+
+```r
+sol &lt;- solve(x^2, -1, "x")
+sol
+```
+
+```
+## {x==Complex(0, 1), x==Complex(0, -1)}
+```
+
+```r
+y_rmvars(sol)
+```
+
+```
+## {Complex(0, 1), Complex(0, -1)}
+```
+
+```r
+as_r(y_rmvars(sol))
+```
+
+```
+## [1] 0+1i 0-1i
+```
+
+---
+
+Another example finding roots:
+
+
+```r
+eq
+```
+
+```
+## y: x^2+3*x+4*y+y^4
+```
+
+```r
+roots &lt;- solve(eq, 0, "x") # shorthand rhs == 0: solve(eq, "x")
+roots
+```
+
+```
+## {x==(Sqrt(9-4*(4*y+y^4))-3)/2, x==(-(Sqrt(9-4*(4*y+y^4))+3))/2}
+```
+
+```r
+tex(roots)
+```
+
+```
+## [1] "\\left( x = \\frac{\\sqrt{9 - 4 \\left( 4 y + y ^{4}\\right) } - 3}{2} , x = \\frac{ - \\left( \\sqrt{9 - 4 \\left( 4 y + y ^{4}\\right) } + 3\\right) }{2} \\right) "
+```
+
+```r
+### $$\begin{align}`r tex(roots)`\end{align}$$
+```
+
+
+`$$\begin{align}\left( x = \frac{\sqrt{9 - 4 \left( 4 y + y ^{4}\right) } - 3}{2} , x = \frac{ - \left( \sqrt{9 - 4 \left( 4 y + y ^{4}\right) } + 3\right) }{2} \right) \end{align}$$`
+
+---
+
+### Solving a system of non-linear equations
+
+
+
+```r
+x &lt;- ysym("x")
+y &lt;- ysym("y")
+lhs &lt;- c(3*x*y - y, x)
+rhs &lt;- c(-5*x, y+4)
+```
+
+`$$\begin{align}
+3 x y - y &amp;= -5 x \\
+x &amp;= y + 4
+\end{align}$$`
+
+
+
+```r
+sol &lt;- solve(lhs, rhs, c("x", "y"))
+sol
+```
+
+```
+## {{      x==2,    y==(-2)},
+##  {    x==2/3, y==(-10)/3}}
+```
+
+```r
+as_r(y_rmvars(sol))
+```
+
+```
+##           [,1]      [,2]
+## [1,] 2.0000000 -2.000000
+## [2,] 0.6666667 -3.333333
+```
+
+---
+
+### Integrals
+
+Syntax:
+```
+integrate(expr, var)
+integrate(expr, var, from, to)
+```
+
+
+```r
+x &lt;- ysym("x")
+res &lt;- integrate(1/x, "x")
+res
+```
+
+```
+## y: Ln(x)
+```
+
+
+```r
+res &lt;- integrate(sin(x)^2, "x")
+res
+```
+
+```
+## y: (x+Sin((-2)*x)/2)/2
+```
+
+```r
+as_r(res)
+```
+
+```
+## expression((x + sin(-2 * x)/2)/2)
+```
+
+---
+
+### Sums
+
+Syntax:
+```
+sum(expr, var, from, to)
+```
+
+
+```r
+x &lt;- ysym("x")
+k &lt;- ysym("k")
+res &lt;- sum(x^k, "k", 0, "n")
+res
+```
+
+```
+## y: (1-x^(n+1))/(1-x)
+```
+
+---
+
+### Sums
+
+
+```r
+k &lt;- ysym("k")
+res &lt;- sum(1/k^2, "k", 1, Inf)
+res
+```
+
+```
+## y: Pi^2/6
+```
+
+```r
+as_r(res)
+```
+
+```
+## [1] 1.644934
+```
+
+---
+
+### Limits 
+
+Syntax:
+```
+lim(expr, var, to)
+lim(expr, var, to, from_left = TRUE)
+lim(expr, var, to, from_right = TRUE)
+```
+
+
+```r
+x &lt;- ysym("x")
+lim(sin(x)/x, "x", 0)
+```
+
+```
+## y: 1
+```
+
+```r
+lim(1/x, "x", 0)
+```
+
+```
+## y: Undefined
+```
+
+```r
+lim(1/x, "x", 0, from_left = TRUE)
+```
+
+```
+## y: -Infinity
+```
+
+```r
+lim(1/x, "x", 0, from_right = TRUE)
+```
+
+```
+## y: Infinity
+```
+
+---
+
+### Linear algebra
+
+
+```r
+A &lt;- ysym(matrix(c(2, 1, 4, "x"), 2, 2))
+A
+```
+
+```
+## {{2, 4},
+##  {1, x}}
+```
+
+```r
+t(A)
+```
+
+```
+## {{2, 1},
+##  {4, x}}
+```
+
+```r
+A[1, ]
+```
+
+```
+## {2, 4}
+```
+
+```r
+# solve(A)
+y_fn(A, "Determinant") # yacas function Determinant()
+```
+
+```
+## y: 2*x-4
+```
+
+---
+
+### Linear algebra
+
+
+```r
+b &lt;- ysym(c("x", 3))
+y &lt;- A %*% b
+y
+```
+
+```
+## {2*x+12, 4*x}
+```
+
+```r
+solve(A, y)
+```
+
+```
+## {((2*x+12)*x-16*x)/(2*x-4), (8*x-(2*x+12))/(2*x-4)}
+```
+
+```r
+solve(A, y) %&gt;% simplify()
+```
+
+```
+## {x, 3}
+```
+
+```r
+b
+```
+
+```
+## {x, 3}
+```
+
+
+
+---
+
+
+### High-level interface (for everyday use)
+
+* `yacas` symbols (`ysym()`)
+* `R` syntax (`*`, `%*%`, `[`, `[&lt;-`, `solve()`, etc.)
+
+### Low-level interface (for advanced stuff)
+
+* `yac_str(x)`: Run `yacas` command `x` and return string
+
+```r
+yac_str("Determinant({{2, 4}, {1, x}})")
+```
+
+```
+## [1] "2*x-4"
+```
+
+* `yac_expr()`: Run `yacas` command `x` and return `R` expression
+
+```r
+yac_expr("Determinant({{2, 4}, {1, x}})")
+```
+
+```
+## expression(2 * x - 4)
+```
+
+See the documentation for `yacas` at &lt;https://yacas.readthedocs.io/&gt;.
+
+---
+
+class: inverse, center, middle
+
+# Example: Multinomial likelihood
+
+---
+
+### Multinomial likelihood
+
+The multinomial likelihood for three categories is
+
+`$$\text{lik}(p \mid y) \propto p_1^{y_1} p_2^{y_2} p_3^{y_3}.$$`
+
+Taking `\(\log\)` we get 
+
+`\begin{align}
+  l(p) &amp;= y_1 \log(p_1) + y_2 \log(p_2) + y_3 \log(p_3) \\
+  g(p) &amp;= p_1 + p_2 + p_3 - 1 .
+\end{align}`
+
+Maximise `\(l(p)\)` for `\(g(p) = 0\)` using Lagrange multiplier to get the unconstrainted optimisation problem
+`\begin{align}
+  L = -l(p) + \lambda g(p)
+\end{align}`
+
+
+```r
+p &lt;- ysym(c("p1", "p2", "p3"))
+y &lt;- ysym(c("y1", "y2", "y3"))
+lambda &lt;- ysym("lambda")
+l &lt;- sum(y*log(p))
+L &lt;- -l + lambda*(sum(p) - 1)
+L
+```
+
+```
+## y: lambda*(p1+p2+p3-1)-(y1*Ln(p1)+y2*Ln(p2)+y3*Ln(p3))
+```
+
+---
+
+### Multinomial likelihood
+
+
+```r
+gL &lt;- deriv(L, c("p1", "p2", "p3"))
+gL
+```
+
+```
+## {lambda-y1/p1, lambda-y2/p2, lambda-y3/p3}
+```
+
+* 3 equations by setting partial derivatives to 0
+* 1 equation from the constraint
+
+
+```r
+sol &lt;- solve(c(gL, sum(p)), 
+             c(rep(0, 3), 1),
+             c("p1", "p2", "p3", "lambda"))
+sol
+```
+
+```
+## {{p1==y1/lambda, p2==y2/lambda, p3==y3/lambda, lambda==y1+y2+y3}}
+```
+
+
+---
+class: inverse, center, middle
+
+# Example: Graphical models
+
+---
+
+.pull-left[
+&lt;img src="ryacas-pres_files/figure-html/graphmodel-1.svg" style="display: block; margin: auto;" /&gt;
+]
+
+.pull-right[
+* Multivariate models with focus on conditional independence (CI) restrictions.
+* Suppose `\(X=(X_A, X_B, \dots, X_E) \sim N_5(0, \Sigma)\)`.
+* The key to interpretation is the concentration matrix `\(K=\Sigma^{-1}\)`
+* `\(K_{ij}=0\)` iff `\(X_i\)` and `\(X_j\)` are independent given all other `\(X\)`s
+* A missing edge reflects a CI-restriction.
+]
+
+* For example `\(X_D\)` and `\(X_C\)` are independent given all other `\(X\)`s
+* A practical approach: `\(X_C\)` and `\(X_D\)` may be correlated. However 
+  + Regress `\(X_D\)` on `\(X_A, X_B, X_E\)` and extract residuals `\(r_D\)`. 
+  + Regress `\(X_C\)` on `\(X_A, X_B, X_E\)` and extract residuals `\(r_C\)`. 
+  + If the resuduals `\(r_D\)` and `\(r_C\)` are uncorrelated then we have the CI.
+
+---
+
+Many classical statistical models are built up on "modularization" based on CI-restrictions:
+
+Examples:
+
+* Autoregressive models
+* State-space models / dynamic linear models
+* Naive Bayesian models
+* Probabilistic Principal Components
+
+It is illustrative to see the connection between these model classes and CI-restrictions in the multivariate normal distribution.
+
+
+
+---
+
+## Autoregression, AR(1)
+
+&lt;img src="ryacas-pres_files/figure-html/ar1-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+
+
+Consider `\(AR(1)\)` process: `\(x_i = a x_{i-1} + e_i\)` where `\(i=2,3,4\)` and where `\(x_1=e_1\)`.
+`$$\begin{align}
+x_1 &amp;=e_1 \\
+x_2 &amp;= a x_{1} + e_2 \\
+x_3 &amp;= a x_{2} + e_3 \\
+x_4 &amp;= a x_{3} + e_4
+\end{align}$$`
+
+Let `\(e=(e_1, \dots, e_4)\)` and `\(x=(x_1, \dots x_4)\)`. 
+Isolating error terms gives that
+`$$\begin{align}
+e = \left( \begin{array}{c} e_{1} \\ e_{2} \\ e_{3} \\ e_{4} \end{array} \right)  = \left( \begin{array}{cccc} 1 &amp; 0 &amp; 0 &amp; 0 \\  - a &amp; 1 &amp; 0 &amp; 0 \\ 0 &amp;  - a &amp; 1 &amp; 0 \\ 0 &amp; 0 &amp;  - a &amp; 1 \end{array} \right)  \left( \begin{array}{c} x_{1} \\ x_{2} \\ x_{3} \\ x_{4} \end{array} \right)  = L x
+\end{align}$$`
+
+---
+
+Define `\(L\)`:
+
+```r
+# Or rbind(c(1, 0, 0, 0), ...)
+L &lt;- ysym("{{1,0,0,0},{-a,1,0,0},{0,-a,1,0},{0,0,-a,1}}")
+L
+```
+
+```
+## {{ 1,  0,  0,  0},
+##  {-a,  1,  0,  0},
+##  { 0, -a,  1,  0},
+##  { 0,  0, -a,  1}}
+```
+
+&lt;img src="ryacas-pres_files/figure-html/unnamed-chunk-29-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+If error terms `\(e_i\)` are independent and `\(N(0,v^2)\)` then `\(e = L x\)` gives
+
+* `\(\mathbf{Var}(e)= v^2 I = L \mathbf{Var}(x) L'\)` 
+
+* Hence the covariance matrix of `\(x\)` is `\(V=\mathbf{Var}(x) = v^2 L^{-1} (L^{-1})'\)`
+
+* The concentration matrix is `\(K=V^{-1}=L L'/v^2\)`
+
+
+We skip `\(v^2\)` in the following (set `\(v^2=1\)`)
+
+
+---
+
+
+```r
+Li &lt;- solve(L)
+Li
+```
+
+```
+## {{  1,   0,   0,   0},
+##  {  a,   1,   0,   0},
+##  {a^2,   a,   1,   0},
+##  {a^3, a^2,   a,   1}}
+```
+
+```r
+V &lt;- Li %*% t(Li)
+K &lt;- L %*% t(L)
+```
+
+
+`$$\begin{align}
+K &amp;= \left( \begin{array}{cccc} 1 &amp;  - a &amp; 0 &amp; 0 \\  - a &amp; a ^{2} + 1 &amp;  - a &amp; 0 \\ 0 &amp;  - a &amp; a ^{2} + 1 &amp;  - a \\ 0 &amp; 0 &amp;  - a &amp; a ^{2} + 1 \end{array} \right)   \\
+V &amp;= \left( \begin{array}{cccc} 1 &amp; a &amp; a ^{2} &amp; a ^{3} \\ a &amp; a ^{2} + 1 &amp; a ^{3} + a &amp; a ^{4} + a ^{2} \\ a ^{2} &amp; a ^{3} + a &amp; a ^{4} + a ^{2} + 1 &amp; a ^{5} + a ^{3} + a \\ a ^{3} &amp; a ^{4} + a ^{2} &amp; a ^{5} + a ^{3} + a &amp; a ^{6} + a ^{4} + a ^{2} + 1 \end{array} \right)   \\
+\end{align}$$`
+
+---
+
+The pattern of `\(0\)`s in `\(K\)` is important:
+
+
+```r
+K
+```
+
+```
+## {{    1,    -a,     0,     0},
+##  {   -a, a^2+1,    -a,     0},
+##  {    0,    -a, a^2+1,    -a},
+##  {    0,     0,    -a, a^2+1}}
+```
+
+
+`\(K_{ij}=0\)` iff `\(x_i\)` is independent of `\(x_j\)` given all other `\(x\)`'s
+
+&lt;img src="ryacas-pres_files/figure-html/unnamed-chunk-32-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## State space models
+
+&lt;img src="ryacas-pres_files/figure-html/ssm-1.svg" style="display: block; margin: auto;" /&gt;
+
+Same story, except that the setting is slightly more involved:
+
+`$$\begin{align}
+x_i &amp;= a x_{i-1} + e_i \\
+y_i &amp;= b x_{i} + u_i
+\end{align}$$`
+
+This gives a different `\(L\)`, but the method to find the concentration matrix is as before.
+
+
+---
+class: inverse, center, middle
+
+# Further down the road
+
+
+---
+
+## Further down the road
+
+Symbolic math in `R` is limited to finding derivatives.
+
+With `Ryacas` we have added a bit (still in `R` syntax thanks to `S3`)
+
+* Integration
+* Finding limits
+* Simplifying expressions
+* Solving (potentially systems of) non-linear equations
+* Linear algebra
+* Technical properties
+  + No `SystemRequirements`
+  + `R` expressions thanks to `RForm()` in `yacas`
+  + `LaTeX` format thanks to `TeXForm()` in `yacas`
+
+It may well be that in the future another engine than `yacas` should be invoked.
+
+
+---
+
+## Original motivation - revisited
+
+Random regression model:
+`$$y_{t} = B_0 + B_1 t + e_{t}$$`
+where `\(B=(B_0,B_1)\sim N(0, \Sigma)\)`, `\(e_{t}\sim N(0, w^2)\)` are independent
+normal random effects.
+
+What is:
+`$$cor(y_{t}, y_{t+k}) \rightarrow \text{??} \quad \mbox{ as } \quad k \rightarrow \infty$$`
+
+
+---
+
+### Solution
+
+From:
+`\begin{align}
+  y_{t} 
+  &amp;= B_0 + B_1 t + e_{t} = 
+  \begin{bmatrix} 1 &amp; t \end{bmatrix} 
+     \begin{bmatrix} B_0 \\ B_1 \end{bmatrix} + e_{t}
+\end{align}`
+
+We get:
+`\begin{align}
+  \mathbf{Var}(y_{t})
+  &amp;= \mathbf{Var} \left (\begin{bmatrix} 1 &amp; t \end{bmatrix} 
+       \begin{bmatrix} B_0 \\ B_1 \end{bmatrix} \right ) + 
+       \mathbf{Var} \left ( e_{t} \right ) 
+  = \begin{bmatrix} 1 &amp; t \end{bmatrix} 
+     \Sigma 
+     \begin{bmatrix} 1 &amp; t \end{bmatrix}^\intercal + 
+     w^2 .
+\end{align}`
+
+Similarly:
+
+`\begin{align}
+  \mathbf{Var}(y_{t+k})
+  &amp;= \begin{bmatrix} 1 &amp; t + k \end{bmatrix} 
+     \Sigma 
+     \begin{bmatrix} 1 &amp; t + k \end{bmatrix}^\intercal + 
+     w^2 .
+\end{align}`
+
+Finally:
+
+`\begin{align}
+  \mathbf{Cov}(y_{t}, y_{t+k})
+  &amp;= \begin{bmatrix} 1 &amp; t \end{bmatrix} 
+     \Sigma 
+     \begin{bmatrix} 1 &amp; t + k \end{bmatrix}^\intercal \\
+  \mathbf{Cor}(y_{t}, y_{t+k}) 
+  &amp;= \frac{\mathbf{Cov}(y_{t}, y_{t+k})}{\sqrt{\mathbf{Var}(y_{t}) \mathbf{Var}(y_{t+k})}} .
+\end{align}`
+
+---
+
+### Formulation in `Ryacas`
+
+
+
+
+
+```r
+ysym_make(c("v1", "v2", "c12"))
+S &lt;- rbind(c(v1, c12), c(c12, v2))
+ysym_make(c("w" = "w", "xt" = "{{1, t}}", "xtk" = "{{1, t+k}}"))
+v_t &lt;- (xt %*% S %*% t(xt) + w^2)[1, 1]
+v_t
+```
+
+```
+## y: w^2+v1+t*c12+(c12+t*v2)*t
+```
+
+```r
+v_tk &lt;- (xtk %*% S %*% t(xtk) + w^2)[1, 1]
+v_tk
+```
+
+```
+## y: w^2+v1+(t+k)*c12+(c12+(t+k)*v2)*(t+k)
+```
+
+```r
+cv_t_tk &lt;- (xt %*% S %*% t(xtk))[1, 1]
+cv_t_tk
+```
+
+```
+## y: v1+t*c12+(c12+t*v2)*(t+k)
+```
+
+---
+
+### Finding the limit
+
+Now the progress stops
+
+```r
+# lim Cor(y_t, y_{t+k}) for k -&gt; Inf
+lim(cv_t_tk / sqrt(v_t * v_tk), "k", Inf)
+```
+
+```
+## Error in yac_core(x): Yacas returned this error: CommandLine(1) : Max evaluation stack depth reached.
+## Please use MaxEvalDepth to increase the stack size as needed.
+```
+
+```r
+k &lt;- ysym("k")
+lim((cv_t_tk / k) / sqrt((v_t * v_tk) / k^2), "k", Inf)
+```
+
+```
+## Error in yac_core(x): Yacas returned this error: CommandLine(1) : Max evaluation stack depth reached.
+## Please use MaxEvalDepth to increase the stack size as needed.
+```
+
+(&lt;https://github.com/grzegorzmazur/yacas/issues/282&gt;)
+
+---
+
+### Another CAS
+
+
+```r
+library(symr) # Based on SymPy; work in progress...
+num &lt;- paste0("(", as.character(cv_t_tk), ")/k")
+den &lt;- paste0("sqrt(((", as.character(v_t), ") * (", 
+              as.character(v_tk), ")/ k^2))")
+num &lt;- gsub("^", "**", num, fixed = TRUE) # Python's way
+den &lt;- gsub("^", "**", den, fixed = TRUE)
+sympy &lt;- symr::get_sympy()
+res &lt;- sympy$limit(paste0(num, "/", den), "k", "oo")
+res
+```
+
+```
+## (c12 + t*v2)/sqrt(v2*(c12*t + t*(c12 + t*v2) + v1 + w**2))
+```
+
+```r
+sympy$latex(res)
+```
+
+```
+## [1] "\\frac{c_{12} + t v_{2}}{\\sqrt{v_{2} \\left(c_{12} t + t \\left(c_{12} + t v_{2}\\right) + v_{1} + w^{2}\\right)}}"
+```
+
+`$$cor(y_{t}, y_{t+k}) \rightarrow \frac{c_{12} + t v_{2}}{\sqrt{v_{2} \left(c_{12} t + t \left(c_{12} + t v_{2}\right) + v_{1} + w^{2}\right)}} \quad \mbox{ as } \quad k \rightarrow \infty$$`
+
+More in 2020...
+
+---
+
+# References
+
+
+* Yacas (**y**et **a**nother **c**omputer **a**lgebra **s**ystem): &lt;http://www.yacas.org/&gt;
+  + Online docs: &lt;http://yacas.readthedocs.org/&gt;
+* Stable version: &lt;https://CRAN.R-project.org/package=Ryacas&gt;
+* Development version: &lt;https://github.com/mikldk/ryacas/&gt;
+  + Online docs: &lt;http://mikldk.github.io/ryacas/&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
